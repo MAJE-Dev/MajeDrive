@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Vehicle, FuelType, Screen } from '../types';
 
 interface AddVehicleProps {
@@ -67,6 +67,35 @@ export default function AddVehicle({ onNavigate, onSave }: AddVehicleProps) {
   const [fuelType, setFuelType] = useState<FuelType>('Flex');
   const [color, setColor] = useState(COLORS[4].value);
   const [error, setError] = useState('');
+  const [photo, setPhoto] = useState<string | undefined>();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione um arquivo de imagem.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 800;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setPhoto(canvas.toDataURL('image/jpeg', 0.8));
+        setError('');
+      };
+      img.onerror = () => setError('Não foi possível ler a imagem.');
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = () => {
     if (!brand || !model || !year || !plate || !mileage) {
@@ -90,6 +119,7 @@ export default function AddVehicle({ onNavigate, onSave }: AddVehicleProps) {
       mileage: kmNum,
       fuelType, color,
       healthScore: 85,
+      photo,
     });
   };
 
@@ -122,6 +152,43 @@ export default function AddVehicle({ onNavigate, onSave }: AddVehicleProps) {
 
       {/* Form */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 18px 30px' }}>
+        {/* Photo */}
+        <div style={{ marginBottom: 20 }}>
+          <FieldLabel>FOTO DO VEÍCULO</FieldLabel>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            style={{
+              width: '100%', height: 150, borderRadius: 14, overflow: 'hidden', padding: 0,
+              background: '#131619', border: '1.5px dashed #222630', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 8, color: '#8B929E', fontSize: 13,
+            }}
+          >
+            {photo ? (
+              <img src={photo} alt="Prévia do veículo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={TEAL} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                Toque para enviar uma imagem
+              </>
+            )}
+          </button>
+          {photo && (
+            <button
+              type="button"
+              onClick={() => setPhoto(undefined)}
+              style={{ marginTop: 8, background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: 0 }}
+            >
+              Remover foto
+            </button>
+          )}
+        </div>
+
         {/* Brand */}
         <div style={{ marginBottom: 20 }}>
           <FieldLabel>MARCA *</FieldLabel>
